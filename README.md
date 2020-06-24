@@ -42,7 +42,7 @@ foreign import ccall "fun9" c_fun9 :: CString -> CString -> IO CInt
 ```
 
 When we use `c_fun9` in `test.hs`, GHCJS will apply `h$fun9` to the mangled
-versions of the two `CString`s. `h$fun9` is defined in `test.js` using `wrap`
+versions of the two `CString`s. `h$fun9` is defined in `test.js` using
 `wrap` from `index.ts`.
 
 ```javascript
@@ -59,6 +59,6 @@ h$fun9 = w.wrap({
 });
 ````
 
-More documentation coming soon.
+More documentation and decent packaging coming soon.
 
 
