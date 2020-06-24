@@ -6,7 +6,10 @@ __WARNING__ Proper packaging as a JavaScript library coming soon.
 
 __WARNING__ Proper documentation coming soon.
 
-Want to see this running? `nix-shell --run ./test`
+__WARNING__ This is not optimized for performance. Yet.
+
+Want to see this running? `nix-shell --run ./test`. If it doesn't work, it's
+because the whole NPM shebang sucks.
 
 
 ## What the C?
@@ -59,7 +62,8 @@ h$fun9 = w.wrap({
 });
 ````
 
-More documentation and decent packaging coming soon. This works in Node and in
-web browsers.
+More documentation and decent packaging coming soon.
+
+This works in Node and in web browsers.
 
 
