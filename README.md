@@ -19,7 +19,7 @@ values are split in half and passed as two separate arguments).
 
 Emscripten is a C compiler that generates JavaScript code using its
 conventions, different from GHCJS's, for receiving CCALLs. It also has a memory
-HEAP separate from the one GHCJS code uses.
+heap separate from the one GHCJS code uses.
 
 `ghcjs-ccall-emscripten` is a set of tools for generating the `h$foo` definition
 automatically, based on the expected CCALL type and the Emscripted-compiled C
