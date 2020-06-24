@@ -46,19 +46,20 @@ versions of the two `CString`s. `h$fun9` is defined in `test.js` using
 `wrap` from `index.ts`.
 
 ```javascript
-const w = require('$this-very-awesome-library');
-const t = require('$the-emscripten-compiled-code');
+const x = require('$this-very-awesome-library');
+const m = require('$the-emscripten-compiled-code');
 
 h$fun9 = w.wrap({
-    mod: t,             // This is the module where the Emscripten heap lives.
-    fun: t._fun9,       // This is the Emscripten-compiled function.
-    ret: w.Ret.VAL,     // Return type is an int, a simple JavaScript value.
-    args: [ w.Arg.BUFW  // First CCALL parameter (dst) is a buffer for writing.
-          , w.Arg.BUFR  // Second CCALL parameter (src) is a buffer for reading.
+    mod: m,             // This is the module where the Emscripten heap lives.
+    fun: m._fun9,       // This is the Emscripten-compiled function.
+    ret: x.Ret.VAL,     // Return type is an int, a simple JavaScript value.
+    args: [ x.Arg.BUFW  // First CCALL parameter (dst) is a buffer for writing.
+          , x.Arg.BUFR  // Second CCALL parameter (src) is a buffer for reading.
           ]
 });
 ````
 
-More documentation and decent packaging coming soon.
+More documentation and decent packaging coming soon. This works in Node and in
+web browsers.
 
 
