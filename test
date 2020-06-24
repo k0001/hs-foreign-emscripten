@@ -26,6 +26,7 @@ log "[GHC] Tests OK"
 
 log "[GHCJS] Building tests"
 set -x
+npm install -D
 npm run build
 cp test.hs test.c test.js $buildDir/ghcjs/
 cp dist/index.js $buildDir/ghcjs/gce.js
