@@ -1,0 +1,17 @@
+.*.sw[a-p]
+*~
+result
+*.lock
+dist/
+tags
+tmp/
+result-*
+node_modules/
+package-lock.json
+*.o
+*.hi
+*.js_o
+*.js_hi
+*.jsexe
+build/
+
