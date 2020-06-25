@@ -20,16 +20,16 @@ export type Size = number;
 type Offset = number;
 
 /* Argument for an Emscripten ccall */
-type EmArg = any;
+export type EmArg = any;
 
 /* Return from an Emscripten ccall */
-type EmRet = any;
+export type EmRet = any;
 
 /* A pointer in Emscripten's address space */
 export type EmPtr = number;
 
 /* An Emscripten module */
-export interface EmModule {
+export interface EmMod {
     readonly _malloc: (s: Size) => EmPtr;
     readonly _free: (ep: EmPtr) => void;
     HEAPU8: Uint8Array;
@@ -42,32 +42,36 @@ interface Global {
     h$newByteArray: (s: Size) => GhcjsBuf;
     h$ret1: any; // Second part of size-2 ccall return values in GHCJS.
                  // (e.g., low bits in 64 bit ints, offset in pointers).
+    [prop: string]: any;
 }
 
 declare const h$newByteArray: Global['h$newByteArray'];
 declare let h$ret1: Global['h$ret1'];
 
-
 /* Options used as parameters to 'wrap' */
 export interface Opts {
-    readonly fun: any;       // The Emscripten function we wrap.
-    readonly ret: Ret;       // The ccall return type.
-    readonly args: Arg[];    // The ccall argument types.
-    readonly mod: EmModule;  // The Emscripten module.
+    /* The Emscripten function we wrap. */
+    readonly fun: (...emArgs: EmArg[]) => EmRet;
+    /* The ccall return type. */
+    readonly ret: Ret;
+    /* The ccall argument types. */
+    readonly args: Arg[];
+    /* The Emscripten module. */
+    readonly mod: EmMod;
 }
 
 function checkOpts(opts : Opts) : void {
-    if (typeof opts.fun    === 'undefined') throw "Undefined fun";
-    if (typeof opts.ret    === 'undefined') throw "Undefined ret";
-    if (typeof opts.mod    === 'undefined') throw "Undefined mod";
-    if (typeof opts.args   === 'undefined') throw "Undefined args";
+    if (typeof opts.fun  === 'undefined') throw "Undefined fun";
+    if (typeof opts.ret  === 'undefined') throw "Undefined ret";
+    if (typeof opts.mod  === 'undefined') throw "Undefined mod";
+    if (typeof opts.args === 'undefined') throw "Undefined args";
 }
 
 /* Argument to a GHCJS ccall */
-type GhcjsArg = any;
+export type GhcjsArg = any;
 
 /* Return from an GHCJS ccall */
-type GhcjsRet = any;
+export type GhcjsRet = any;
 
 /* The thing returned by GHCJS's h$newByteArray, more or less */
 interface GhcjsBuf {
@@ -75,12 +79,12 @@ interface GhcjsBuf {
 }
 
 /* This probably doesn't cover all scenarios, but it works for us so far */
-interface GhcjsPtr {
+export interface GhcjsPtr {
     buf: GhcjsBuf;
     off: Offset;
 }
 
-function mkGhcjsPtr(buf: GhcjsBuf, off: Offset): GhcjsPtr {
+export function mkGhcjsPtr(buf: GhcjsBuf, off: Offset): GhcjsPtr {
     if (typeof buf.u8 === 'undefined') throw "Undefined buf";
     if (off !== 0) throw "Unexpected off";
     return { buf, off };
@@ -232,3 +236,4 @@ export function wrap(opts : Opts): (...ghcjsArgs: GhcjsArg[]) => GhcjsRet {
         return ghcjsRet;
     }
 }
+

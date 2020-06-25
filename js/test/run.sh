@@ -6,7 +6,8 @@ function log {
   echo -e "\033[34;1m${1}\033[0m"
 }
 
-buildDir=build/test
+here=.
+buildDir=$here/build
 mkdir -p $buildDir/{ghc,ghcjs}
 rm -rf $buildDir/{ghc,ghcjs}/*
 
@@ -26,10 +27,12 @@ log "[GHC] Tests OK"
 
 log "[GHCJS] Building tests"
 set -x
+pushd $here/..
 npm install -D
 npm run build
+popd
 cp test.hs test.c test.js $buildDir/ghcjs/
-cp dist/index.js $buildDir/ghcjs/gce.js
+cp $here/../dist/index.js $buildDir/ghcjs/gce.js
 pushd $buildDir/ghcjs/
 emcc test.c -o test.em.js -s WASM=0 \
   -s EXTRA_EXPORTED_RUNTIME_METHODS="['getTempRet0']" \
