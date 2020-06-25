@@ -2,7 +2,6 @@
 *~
 result
 *.lock
-dist/
 tags
 tmp/
 result-*
@@ -14,4 +13,4 @@ package-lock.json
 *.js_hi
 *.jsexe
 build/
-
+dist-newstyle/

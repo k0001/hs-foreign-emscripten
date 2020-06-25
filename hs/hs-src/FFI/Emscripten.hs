@@ -1,19 +1,42 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE JavaScriptFFI #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+-- | You probably want to call 'wrapModIO' once from your @main@ function.
 module FFI.Emscripten
-  ( Mod
+  ( -- * CCALL return types
+    Ret(..)
+    -- * CCALL argument types
+  , Arg(..)
+  , Zero(..)
+    -- * CCALL function names
+  , Name(..)
+    -- * Emscripten module
+  , Mod
   , mod
+    -- * Emscripten functions
   , modFun
   , Fun
   , fun
-  , Name
-  , name
-  , Ret(..)
-  , Arg(..)
-  , Zero(..)
-  , wrappedFun
-  , setGlobal
-  , wrapGlobals
+    -- * Wrapping Emscripten functions
+  , WrappedFun
+  , wrapFun
+  , wrapMod
+    -- * Setting wrapped functions globally
+  , wrapIO
+  , wrapModIO
   ) where
+
+import Data.Bits ((.|.))
+import Data.Bool (bool)
+import Data.JSString (JSString)
+import Data.String (IsString(..))
+import GHCJS.Types (JSVal)
+import GHCJS.Marshal.Pure (PFromJSVal(..), PToJSVal(..))
+import JavaScript.Array (JSArray)
+import qualified JavaScript.Array as JSArray
+import Prelude hiding (mod)
 
 --------------------------------------------------------------------------------
 
@@ -81,7 +104,7 @@ fun = fmap Fun . pFromJSVal
 
 -- | A CCALL function name.
 newtype Name = Name JSString
-  deriving newtype instance (Show, IsString)
+  deriving newtype (Show, IsString)
 
 -- | Obtain a Emscripten 'Fun'ction from an Emscripten 'Mod'ule, by 'Name'.
 --
@@ -113,38 +136,45 @@ jsArg :: Arg -> JsArg
 jsArg = JsArg . \case
   ArgVal            -> js_Arg_VAL
   ArgI64            -> js_Arg_I64
-  ArgBufR  (Zero z) -> js_Arg_BUFZ z .|. js_Arg_BUFR
-  ArgBufW  (Zero z) -> js_Arg_BUFZ z .|. js_Arg_BUFW
-  ArgBufRW (Zero z) -> js_Arg_BUFZ z .|. js_Arg_BUFR .|. js_Arg_BUFW
+  ArgBufR  (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFR
+  ArgBufW  (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFW
+  ArgBufRW (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFR .|. js_Arg_BUFW
 
 --------------------------------------------------------------------------------
 
 -- | An Emscripten 'Fun' converted to a JavaScript function that fits
--- GHCJS's FFI CCALL expectation. Construct with 'wrappedFun'.
+-- GHCJS's FFI CCALL expectation. Construct with 'wrapFun'.
 newtype WrappedFun = WrappedFun JSVal
 
-wrappedFun :: Mod -> Fun -> Ret -> [Arg] -> WrappedFun
-wrappedFun (Mod m) (Fun f) ret args =
-  let ret' = unJsArg (jsArg ret)
+wrapFun :: Mod -> Fun -> Ret -> [Arg] -> WrappedFun
+wrapFun (Mod m) (Fun f) ret args =
+  let ret' = unJsRet (jsRet ret)
       args' = JSArray.fromList (fmap (pToJSVal . unJsArg . jsArg) args)
-  in js_wrap m f ret' args'
-
-
---------------------------------------------------------------------------------
-
-setGlobal :: Name -> WrappedFun -> IO ()
-setGlobal (Name n) (WrappedFun f) = js_setGlobal ("h$" <> n) f
-
---------------------------------------------------------------------------------
+  in WrappedFun $ js_wrap m f ret' args'
 
 -- | Given an Emscripen 'Mod'ule and the 'Name's and details of the
--- 'Fun'ctions to wrap
--- TODO DOCS
-wrapGlobals :: Mod -> [(Name, Ret, [Arg])] -> IO (Either String ())
-wrapGlobals m = traverse $ \(n, r, as) -> do
+-- 'Fun'ctions to wrap, return their wrapped versions, with their corresponding
+-- name.
+wrapMod :: Mod -> [(Name, Ret, [Arg])] -> Either Name [(Name, WrappedFun)]
+wrapMod m = mapM $ \(n, r, as) -> do
   case modFun m n of
-    Nothing -> pure $ Left ("Missing module attribute: " <> show name)
-    Just f  -> Right <$> setGlobal n (wrappedFun m f r as)
+    Just f  -> Right (n, wrapFun m f r as)
+    Nothing -> Left n
+
+--------------------------------------------------------------------------------
+
+-- | Set a 'WrappedFun' in the global namespace, as expected by GHCJS's FFI.
+wrapIO :: Name -> WrappedFun -> IO ()
+wrapIO (Name n) (WrappedFun f) = js_setGlobal ("h$" <> n) f
+
+--------------------------------------------------------------------------------
+
+-- | If the result of 'wrapMod' is successful, it runs 'wrapIO' on the
+-- resulting 'WrappedFun's. Otherwise, it fails with an exception.
+wrapModIO :: Mod -> [(Name, Ret, [Arg])] -> IO ()
+wrapModIO m xs = case wrapMod m xs of
+  Left n -> error ("Missing Emscripted module attribute: _" <> show n)
+  Right nfs -> mapM_ (uncurry wrapIO) nfs
 
 --------------------------------------------------------------------------------
 
