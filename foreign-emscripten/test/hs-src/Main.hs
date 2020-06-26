@@ -9,7 +9,7 @@ import Foreign.C.String
 import Foreign.Marshal.Alloc
 import GHCJS.Types (JSVal)
 
-import FFI.Emscripten as F
+import Foreign.Emscripten as F
 
 main :: IO ()
 main = pre >> tests

@@ -6,7 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | You probably want to call 'wrapModIO' once from your @main@ function.
-module FFI.Emscripten
+module Foreign.Emscripten
   ( -- * CCALL return types
     Ret(..)
     -- * CCALL argument types
@@ -30,7 +30,6 @@ module FFI.Emscripten
   ) where
 
 import Data.Bits ((.|.))
-import Data.Bool (bool)
 import Data.JSString (JSString)
 import Data.String (IsString(..))
 import GHCJS.Types (JSVal)

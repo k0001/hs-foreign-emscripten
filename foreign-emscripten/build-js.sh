@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-npm install --save-dev --save-exact \
-  ts-loader@7.0.5 \
-  typescript@3.9.5 \
-  webpack@4.43.0 \
-  webpack-cli@3.3.12
+npm install -D
 
 # lib/
 npx webpack --config lib/webpack.config.js
