@@ -1,11 +1,16 @@
 module.exports = {
-    entry: './test/js-src/index.js',
+    mode: 'development',
+    entry: __dirname + '/js-src/index.js',
     output: {
         path: __dirname + '/js-dist/',
-        filename: 'index.js',
+        filename: 'bundle.js',
         libraryTarget: 'var',
         library: 'h$ffi_emscripten__test_module'
     },
-    mode: 'development',
-    node: { fs: 'empty' }
+    resolve: {
+        extensions: ['.js']
+    },
+    node: {
+        fs: 'empty'
+    }
 };

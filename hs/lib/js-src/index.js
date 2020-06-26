@@ -1,4 +1,4 @@
-import * as m from '../../../js/dist/index.js';
+const m = require('./core.ts');
 
 export const { Ret, Arg } = m;
 

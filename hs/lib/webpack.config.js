@@ -1,10 +1,25 @@
 module.exports = {
-    entry: './lib/js-src/index.js',
+    mode: 'production',
+    entry: __dirname + '/js-src/index.js',
     output: {
         path: __dirname + '/js-dist/',
-        filename: 'index.js',
+        filename: 'bundle.js',
         libraryTarget: 'var',
         library: 'h$ffi_emscripten'
     },
-    mode: 'production'
+    module: {
+        rules: [{
+            test: /\.tsx?$/,
+            exclude: /node_modules/,
+            use: [{
+                loader: 'ts-loader',
+                options: {
+                    configFile: __dirname + '/tsconfig.json'
+                }
+            }]
+        }]
+    },
+    resolve: {
+        extensions: ['.tsx', '.ts', '.js']
+    }
 };
