@@ -4,7 +4,7 @@ let
   ghcjs-overrides = pkgs: self: super:
     let hs = pkgs.haskell.lib;
     in {
-      ffi-emscripten = super.callPackage ../hs/pkg.nix { };
+      foreign-emscripten = super.callPackage ../foreign-emscripten/pkg.nix { };
 
       extra = hs.dontCheck super.extra;
       quickcheck-assertions = hs.dontCheck super.quickcheck-assertions;
@@ -16,7 +16,7 @@ let
 
       _shell = super.shellFor {
         withHoogle = false;
-        packages = p: [ p.ffi-emscripten ];
+        packages = p: [ p.foreign-emscripten ];
         nativeBuildInputs = [ pkgs.emscripten pkgs.nodejs ];
       };
     };

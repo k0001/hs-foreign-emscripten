@@ -9,10 +9,10 @@ maintainer: renλren.zone
 copyright: Copyright (c) Renzo Carbonara 2020
 category: GHCJS
 build-type: Simple
-synopsis: GHCJS FFI CCALL to Emscripten
-description: GHCJS FFI CCALL to Emscripten
-homepage: https://github.com/k0001/ghcjs-foreign-emscripten
-bug-reports: https://github.com/k0001/ghcjs-foreign-emscripten-keys/issues
+synopsis: Dispatch GHCJS FFI CCALLs to code compiled with Emscripten
+description: Dispatch GHCJS FFI CCALLs to code compiled with Emscripten
+homepage: https://github.com/k0001/hs-foreign-emscripten
+bug-reports: https://github.com/k0001/hs-foreign-emscripten-keys/issues
 tested-with: GHC == 8.6.5, GHCJS == 8.6.0
 
 
