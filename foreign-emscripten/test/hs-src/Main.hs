@@ -16,8 +16,7 @@ main = pre >> tests
 
 pre :: IO ()
 pre = do
-  let Just m = F.mod js_modV
-  wrapModIO m
+  wrapModIO (F.Mod js_modV)
     [ ("fun1", F.RetVal, [])
     , ("fun2", F.RetVal, [F.ArgVal])
     , ("fun3", F.RetVal, [F.ArgVal, F.ArgVal])
