@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
+set -x
+
 npm install --save-dev webpack webpack-cli
-npx webpack
+
+# lib/
+npx webpack --config lib/webpack.config.js

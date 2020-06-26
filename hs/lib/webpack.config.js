@@ -1,12 +1,5 @@
 module.exports = {
-    entry: './js-src/index.js',
-//    module: {
-//        rules: [{
-//            test: /\.tsx?$/,
-//            use: 'ts-loader',
-//            exclude: /node_modules/,
-//        }],
-//    },
+    entry: './lib/js-src/index.js',
     output: {
         path: __dirname + '/js-dist/',
         filename: 'index.js',

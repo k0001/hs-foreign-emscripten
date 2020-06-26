@@ -1,19 +1,20 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE JavaScriptFFI #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 -- | You probably want to call 'wrapModIO' once from your @main@ function.
 module FFI.Emscripten
   ( -- * CCALL return types
     Ret(..)
     -- * CCALL argument types
   , Arg(..)
-  , Zero(..)
     -- * CCALL function names
   , Name(..)
     -- * Emscripten module
-  , Mod
+  , Mod(..)
   , mod
     -- * Emscripten functions
   , modFun
@@ -43,38 +44,37 @@ import Prelude hiding (mod)
 -- | The type of the return type from a CCALL, insofar as GHCJS is concerned.
 data Ret
   = RetVoid
-  -- ^ C's @void@. In Haskell, this is represented as `()`.
+  -- ^ C's @void@. In Haskell, this is represented as @()@.
   | RetVal
-  -- ^ Single 'JSVal'. That is, something like 'Int32' or 'Bool'.
+  -- ^ Single 'JSVal'. That is, something like 'Data.Int.Int32' or 'Bool'.
   | RetI64
-  -- ^ Size-2 GHCJS integral value. That is, something like 'Word64'
-  -- or 'Foreign.C.Tytes.CLLong'.
+  -- ^ Size-2 GHCJS integral value. That is, something like 'Dat.Word.Word64'
+  -- or 'Foreign.C.Types.CLLong'.
   | RetStr
-  -- ^ A @NUL@-terminated C string.
+  -- ^ A @NUL@-terminated 'Foreign.C.String.CString'.
 
 --------------------------------------------------------------------------------
 
 -- | The type of an argument to a CCALL, insofar as GHCJS is concerned.
 data Arg
   = ArgVal
-  -- ^ Single 'JSVal'. That is, something like 'Int32' or 'Bool'.
+  -- ^ Single 'JSVal'. That is, something like 'Data.Word.Int32' or 'Bool'.
   | ArgI64
-  -- ^ Size-2 GHCJS integral value. That is, something like 'Word64'
+  -- ^ Size-2 GHCJS integral value. That is, something like 'Data.Word.Word64'
   -- or 'Foreign.C.Tytes.CLLong'.
-  | ArgBufR Zero
-  -- ^ A buffer for __reading__ purposes on the Emscripten side.
+  | ArgBufR
+  -- ^ A buffer for /reading/ purposes on the Emscripten side.
   -- 'Foreign.C.Ptr.Ptr's are usually represented as 'GHCJS.Buffer.Buffer's.
-  | ArgBufW Zero
-  -- ^ A buffer for __writing__ purposes on the Emscripten side.
-  -- 'Foreign.C.Ptr.Ptr's are usually represented as 'GHCJS.Buffer.Buffer's.
-  | ArgBufRW Zero
-  -- ^ A buffer for __reading and writing__ purposes on the Emscripten side.
-  -- 'Foreign.C.Ptr.Ptr's are usually represented as 'GHCJS.Buffer.Buffer's.
-
---------------------------------------------------------------------------------
-
--- | Whether a buffer should be zeroed after use on the Emscripten side.
-newtype Zero = Zero Bool
+  | ArgBufRz
+  -- ^ Like 'ArgBufR', but zeroes the Emscripten memory after use.
+  | ArgBufW
+  -- ^ Like 'ArgBufR', but for /writing/ purposes.
+  | ArgBufWz
+  -- ^ Like 'ArgBufW', but zeroes the Emscripten memory after use.
+  | ArgBufRW
+  -- ^ Like 'ArgBufR', but for /reading and writing/ purposes.
+  | ArgBufRWz
+  -- ^ Like 'ArgBufRW', but zeroes the Emscripten memory after use.
 
 --------------------------------------------------------------------------------
 
@@ -86,7 +86,9 @@ newtype Mod = Mod JSVal
 
 -- | Obtain an Emscripten 'Mod'ule from a 'JSVal', if suitable.
 mod :: JSVal -> Maybe Mod
-mod = fmap Mod . pFromJSVal
+mod v = case pFromJSVal v of
+  Nothing -> error "no mod" -- Nothing
+  Just !w -> Just (Mod w)
 
 --------------------------------------------------------------------------------
 
@@ -98,7 +100,9 @@ data Fun = Fun JSVal
 --
 -- Consider using the easier 'modFun'.
 fun :: JSVal -> Maybe Fun
-fun = fmap Fun . pFromJSVal
+fun v = case pFromJSVal v of
+  Nothing -> error "no fun" -- Nothing
+  Just !w -> Just (Fun w)
 
 --------------------------------------------------------------------------------
 
@@ -112,7 +116,10 @@ newtype Name = Name JSString
 -- —available on JavaScript as @m._foo@—, then @'modFun' m \"foo\"@ will resolve
 -- to @m._foo@.
 modFun :: Mod -> Name -> Maybe Fun
-modFun (Mod m) (Name n) = fun =<< pFromJSVal (js_unsafeGetProp m ("_" <> n))
+modFun (Mod m) (Name n) =
+  case pFromJSVal (js_unsafeGetProp m ("_" <> n)) of
+    Nothing -> error "no modFun"
+    Just f  -> fun f
 {-# NOINLINE modFun #-}
 
 --------------------------------------------------------------------------------
@@ -134,11 +141,14 @@ newtype JsArg = JsArg { unJsArg :: Int }
 
 jsArg :: Arg -> JsArg
 jsArg = JsArg . \case
-  ArgVal            -> js_Arg_VAL
-  ArgI64            -> js_Arg_I64
-  ArgBufR  (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFR
-  ArgBufW  (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFW
-  ArgBufRW (Zero z) -> bool 0 js_Arg_BUFZ z .|. js_Arg_BUFR .|. js_Arg_BUFW
+  ArgVal    -> js_Arg_VAL
+  ArgI64    -> js_Arg_I64
+  ArgBufR   -> js_Arg_BUFR
+  ArgBufRz  -> js_Arg_BUFR .|. js_Arg_BUFZ
+  ArgBufW   -> js_Arg_BUFW
+  ArgBufWz  -> js_Arg_BUFW .|. js_Arg_BUFZ
+  ArgBufRW  -> js_Arg_BUFR .|. js_Arg_BUFW
+  ArgBufRWz -> js_Arg_BUFR .|. js_Arg_BUFW .|. js_Arg_BUFZ
 
 --------------------------------------------------------------------------------
 
@@ -159,7 +169,7 @@ wrapMod :: Mod -> [(Name, Ret, [Arg])] -> Either Name [(Name, WrappedFun)]
 wrapMod m = mapM $ \(n, r, as) -> do
   case modFun m n of
     Just f  -> Right (n, wrapFun m f r as)
-    Nothing -> Left n
+    Nothing -> error "no wrapMod" -- Left n
 
 --------------------------------------------------------------------------------
 
@@ -173,33 +183,33 @@ wrapIO (Name n) (WrappedFun f) = js_setGlobal ("h$" <> n) f
 -- resulting 'WrappedFun's. Otherwise, it fails with an exception.
 wrapModIO :: Mod -> [(Name, Ret, [Arg])] -> IO ()
 wrapModIO m xs = case wrapMod m xs of
-  Left n -> error ("Missing Emscripted module attribute: _" <> show n)
+  Left (Name n) -> error ("Missing Emscripten module attribute: _" <> show n)
   Right nfs -> mapM_ (uncurry wrapIO) nfs
 
 --------------------------------------------------------------------------------
 
-foreign import javascript "h$ffi_emscripten.Ret.VOID" js_Ret_VOID :: Int
-foreign import javascript "h$ffi_emscripten.Ret.VAL"  js_Ret_VAL  :: Int
-foreign import javascript "h$ffi_emscripten.Ret.I64"  js_Ret_I64  :: Int
-foreign import javascript "h$ffi_emscripten.Ret.STR"  js_Ret_STR  :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Ret.VOID;" js_Ret_VOID :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Ret.VAL;"  js_Ret_VAL  :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Ret.I64;"  js_Ret_I64  :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Ret.STR;"  js_Ret_STR  :: Int
 
-foreign import javascript "h$ffi_emscripten.Arg.VAL"  js_Arg_VAL  :: Int
-foreign import javascript "h$ffi_emscripten.Arg.I64"  js_Arg_I64  :: Int
-foreign import javascript "h$ffi_emscripten.Arg.BUFR" js_Arg_BUFR :: Int
-foreign import javascript "h$ffi_emscripten.Arg.BUFW" js_Arg_BUFW :: Int
-foreign import javascript "h$ffi_emscripten.Arg.BUFZ" js_Arg_BUFZ :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.VAL;"  js_Arg_VAL  :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.I64;"  js_Arg_I64  :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFR;" js_Arg_BUFR :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFW;" js_Arg_BUFW :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFZ;" js_Arg_BUFZ :: Int
 
-foreign import javascript "h$ffi_emscripten.wrap"
+foreign import javascript unsafe "$r = h$ffi_emscripten.wrap($1, $2, $3, $4);"
   js_wrap :: JSVal   -- ^ Mod
           -> JSVal   -- ^ Fun
           -> Int     -- ^ Ret
           -> JSArray -- ^ [Arg]
           -> JSVal   -- ^ WrappedFun
 
-foreign import javascript "h$ffi_emscripten.setGlobal"
+foreign import javascript unsafe "h$ffi_emscripten.setGlobal($1, $2)"
   js_setGlobal :: JSString -> JSVal -> IO ()
 
 -- | The returned 'JSVal' may be @undefined@.
-foreign import javascript "$1[$2]"
+foreign import javascript unsafe "$r = $1[$2];"
   js_unsafeGetProp :: JSVal -> JSString -> JSVal
 
