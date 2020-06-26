@@ -198,7 +198,8 @@ foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFR;" js_Arg_BUFR :
 foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFW;" js_Arg_BUFW :: Int
 foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFZ;" js_Arg_BUFZ :: Int
 
-foreign import javascript unsafe "$r = h$ffi_emscripten.wrap($1, $2, $3, $4);"
+foreign import javascript unsafe
+  "$r = h$ffi_emscripten.wrap({mod: $1, fun: $2, ret: $3, args: $4});"
   js_wrap :: JSVal   -- ^ Mod
           -> JSVal   -- ^ Fun
           -> Int     -- ^ Ret
