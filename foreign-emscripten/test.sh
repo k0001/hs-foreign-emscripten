@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
+./build-js.sh
+
 cabal clean
 cabal --ghcjs build lib:foreign-emscripten
 
