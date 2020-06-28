@@ -72,6 +72,8 @@ data Arg
   -- ^ Like 'ArgBufR', but for /reading and writing/ purposes.
   | ArgBufRWz
   -- ^ Like 'ArgBufRW', but zeroes the Emscripten memory after use.
+  | ArgPtrNull
+  -- ^ A pointer that is expected to be null.
 
 --------------------------------------------------------------------------------
 
@@ -122,14 +124,15 @@ newtype JsArg = JsArg { unJsArg :: Int }
 
 jsArg :: Arg -> JsArg
 jsArg = JsArg . \case  -- Probably hardcode these here?
-  ArgVal    -> js_Arg_VAL
-  ArgI64    -> js_Arg_I64
-  ArgBufR   -> js_Arg_BUFR
-  ArgBufRz  -> js_Arg_BUFR .|. js_Arg_BUFZ
-  ArgBufW   -> js_Arg_BUFW
-  ArgBufWz  -> js_Arg_BUFW .|. js_Arg_BUFZ
-  ArgBufRW  -> js_Arg_BUFR .|. js_Arg_BUFW
-  ArgBufRWz -> js_Arg_BUFR .|. js_Arg_BUFW .|. js_Arg_BUFZ
+  ArgVal     -> js_Arg_VAL
+  ArgI64     -> js_Arg_I64
+  ArgBufR    -> js_Arg_BUFR
+  ArgBufRz   -> js_Arg_BUFR .|. js_Arg_BUFZ
+  ArgBufW    -> js_Arg_BUFW
+  ArgBufWz   -> js_Arg_BUFW .|. js_Arg_BUFZ
+  ArgBufRW   -> js_Arg_BUFR .|. js_Arg_BUFW
+  ArgBufRWz  -> js_Arg_BUFR .|. js_Arg_BUFW .|. js_Arg_BUFZ
+  ArgPtrNull -> js_Arg_PNUL
 
 --------------------------------------------------------------------------------
 
@@ -179,6 +182,7 @@ foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.I64;"  js_Arg_I64  :
 foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFR;" js_Arg_BUFR :: Int
 foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFW;" js_Arg_BUFW :: Int
 foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.BUFZ;" js_Arg_BUFZ :: Int
+foreign import javascript unsafe "$r = h$ffi_emscripten.Arg.PNUL;" js_Arg_PNUL :: Int
 
 foreign import javascript unsafe
   "$r = h$ffi_emscripten.wrap({mod: $1, fun: $2, ret: $3, args: $4});"

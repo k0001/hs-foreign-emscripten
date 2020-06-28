@@ -4,7 +4,8 @@ export enum Arg {
     I64 = 2,    // 64-bit integer.
     BUFR = 4,   // Pointer to data to be read. GhcjsBuf.
     BUFW = 8,   // Pointer to data to be written to. GhcjsBuf.
-    BUFZ = 16,  // Poniter to sensitive data to be zeroed after use. GhcjsBuf.
+    BUFZ = 16,  // Pointer to sensitive data to be zeroed after use. GhcjsBuf.
+    PNUL = 32,  // Pointer expected to be null.
 }
 
 /* Possible return types from a ccall */
@@ -60,7 +61,7 @@ export interface Opts {
     readonly mod: EmMod;
 }
 
-function checkOpts(opts : Opts) : void {
+function checkOpts(opts: Opts): void {
     if (typeof opts.fun  === 'undefined') throw "Undefined fun";
     if (typeof opts.ret  === 'undefined') throw "Undefined ret";
     if (typeof opts.mod  === 'undefined') throw "Undefined mod";
@@ -79,12 +80,12 @@ interface GhcjsBuf {
 }
 
 /* This probably doesn't cover all scenarios, but it works for us so far */
-export interface GhcjsPtr {
+export interface GhcjsPtrBuf {
     buf: GhcjsBuf;
     off: Offset;
 }
 
-export function mkGhcjsPtr(buf: GhcjsBuf, off: Offset): GhcjsPtr {
+export function mkGhcjsPtr(buf: GhcjsBuf, off: Offset): GhcjsPtrBuf {
     if (typeof buf.u8 === 'undefined') throw "Undefined buf";
     if (off !== 0) throw "Unexpected off";
     return { buf, off };
@@ -138,15 +139,21 @@ function mkEmArgs(s: State, opts: Opts, ghcjsArgs: GhcjsArg[]): EmArg[] {
             emArgs.push(ghcjsArgs.shift());
 
         } else if (arg & Arg.I64) {
-            const hi : number = ghcjsArgs.shift();
-            const lo : number = ghcjsArgs.shift();
+            const hi: number = ghcjsArgs.shift();
+            const lo: number = ghcjsArgs.shift();
             emArgs.push(lo);
             emArgs.push(hi);
 
+        } else if (arg & Arg.PNUL) {
+            const x: null = ghcjsArgs.shift();
+            if (x !== null) throw "null pointer was expected";
+            const off: Offset = ghcjsArgs.shift();
+            emArgs.push(0); // Should push `null`?
+
         } else if (arg & (Arg.BUFR | Arg.BUFW | Arg.BUFZ)) {
-            const ghBuf : GhcjsBuf = ghcjsArgs.shift();
-            const ghOff : Offset = ghcjsArgs.shift();
-            const ghPtr : GhcjsPtr = mkGhcjsPtr(ghBuf, ghOff);
+            const ghBuf: GhcjsBuf = ghcjsArgs.shift();
+            const ghOff: Offset = ghcjsArgs.shift();
+            const ghPtr: GhcjsPtrBuf = mkGhcjsPtr(ghBuf, ghOff);
 
             const size: Size = ghBuf.u8.byteLength;
             const emPtr: EmPtr = opts.mod._malloc(size);
@@ -201,13 +208,13 @@ function mkMkGhcjsRet(opts: Opts): (s: State, emRet: EmRet) => GhcjsRet {
                    new Uint8Array(opts.mod.HEAPU8.buffer, emPtr);
                 let ixNul: number = emData.indexOf(0);
                 if (ixNul < 0) throw "C string is not NUL terminated!"
-                const bufSize : Size = ixNul + 1;
+                const bufSize: Size = ixNul + 1;
                 const emCStr: Uint8Array =
                    new Uint8Array(opts.mod.HEAPU8.buffer, emPtr, bufSize);
                 const ghcjsBuf: GhcjsBuf = h$newByteArray(bufSize);
                 ghcjsBuf.u8.set(emCStr);
-                h$ret1 = 0; // GhcjsPtr.off
-                return ghcjsBuf; // GhcjsPtr.off
+                h$ret1 = 0; // GhcjsPtrBuf.off
+                return ghcjsBuf; // GhcjsPtrBuf.buf
             };
         default:
             throw "Unhandled Ret";
@@ -220,7 +227,7 @@ function mkMkGhcjsRet(opts: Opts): (s: State, emRet: EmRet) => GhcjsRet {
 
    Or something along those lines.
 */
-export function wrap(opts : Opts): (...ghcjsArgs: GhcjsArg[]) => GhcjsRet {
+export function wrap(opts: Opts): (...ghcjsArgs: GhcjsArg[]) => GhcjsRet {
     checkOpts(opts);
     const mkGhcjsRet: (s: State, emRet: EmRet) => GhcjsRet = mkMkGhcjsRet(opts);
     return (...ghcjsArgs: GhcjsArg[]) => {
