@@ -151,36 +151,40 @@ function mkEmArgs(s: State, opts: Opts, ghcjsArgs: GhcjsArg[]): EmArg[] {
             emArgs.push(0); // Should push `null`?
 
         } else if (arg & (Arg.BUFR | Arg.BUFW | Arg.BUFZ)) {
-            const ghBuf: GhcjsBuf = ghcjsArgs.shift();
-            const ghOff: Offset = ghcjsArgs.shift();
-            const ghPtr: GhcjsPtrBuf = mkGhcjsPtr(ghBuf, ghOff);
+            const ghcjsBuf: GhcjsBuf = ghcjsArgs.shift();
+            const ghcjsOff: Offset = ghcjsArgs.shift();
+            if (ghcjsBuf === null) {
+                emArgs.push(0); // Should push `null`?
+            } else {
+                const ghcjsPtr: GhcjsPtrBuf = mkGhcjsPtr(ghcjsBuf, ghcjsOff);
 
-            const size: Size = ghBuf.u8.byteLength;
-            const emPtr: EmPtr = opts.mod._malloc(size);
-            addClean(s, () => {
-                opts.mod._free(emPtr);
-            });
-
-            if (arg & Arg.BUFR) {
-                addPre(s, () => {
-                    const emData: Uint8Array =
-                        new Uint8Array(opts.mod.HEAPU8.buffer, emPtr, size);
-                    emData.set(ghBuf.u8);
-                });
-            }
-            if (arg & Arg.BUFW) {
-                addPost(s, () => {
-                    const emData: Uint8Array =
-                       new Uint8Array(opts.mod.HEAPU8.buffer, emPtr, size);
-                    ghBuf.u8.set(emData);
-                });
-            }
-            if (arg & Arg.BUFZ) {
+                const size: Size = ghcjsBuf.u8.byteLength;
+                const emPtr: EmPtr = opts.mod._malloc(size);
                 addClean(s, () => {
-                    opts.mod.HEAPU8.fill(0, emPtr, emPtr + size);
+                    opts.mod._free(emPtr);
                 });
+
+                if (arg & Arg.BUFR) {
+                    addPre(s, () => {
+                        const emData: Uint8Array =
+                            new Uint8Array(opts.mod.HEAPU8.buffer, emPtr, size);
+                        emData.set(ghcjsBuf.u8);
+                    });
+                }
+                if (arg & Arg.BUFW) {
+                    addPost(s, () => {
+                        const emData: Uint8Array =
+                           new Uint8Array(opts.mod.HEAPU8.buffer, emPtr, size);
+                        ghcjsBuf.u8.set(emData);
+                    });
+                }
+                if (arg & Arg.BUFZ) {
+                    addClean(s, () => {
+                        opts.mod.HEAPU8.fill(0, emPtr, emPtr + size);
+                    });
+                }
+                emArgs.push(emPtr);
             }
-            emArgs.push(emPtr);
 
         } else { throw "Unhandled Arg"; }
     }
@@ -206,7 +210,7 @@ function mkMkGhcjsRet(opts: Opts): (s: State, emRet: EmRet) => GhcjsRet {
             return (s, emPtr: EmPtr) => {
                 const emData: Uint8Array =
                    new Uint8Array(opts.mod.HEAPU8.buffer, emPtr);
-                let ixNul: number = emData.indexOf(0);
+                const ixNul: number = emData.indexOf(0);
                 if (ixNul < 0) throw "C string is not NUL terminated!"
                 const bufSize: Size = ixNul + 1;
                 const emCStr: Uint8Array =
