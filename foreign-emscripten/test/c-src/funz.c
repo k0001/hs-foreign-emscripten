@@ -1,3 +1,5 @@
+#define NULL 0
+
 int fun1() {
     return 0;
 }
@@ -26,6 +28,9 @@ void fun7() {
 }
 
 int fun8(char *a) {
+    if (NULL == a) {
+        return -1;
+    }
     int i = 0;
     while (a[i] != 0) {
         i++;

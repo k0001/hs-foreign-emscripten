@@ -7,6 +7,7 @@ import qualified System.IO as IO
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Marshal.Alloc
+import Foreign.Ptr
 import GHCJS.Types (JSVal)
 
 import Foreign.Emscripten as F
@@ -47,6 +48,8 @@ tests = do
   test "fun6(5, 4)" 9 $ c_fun6 5 4
 
   test "fun7()" () $ c_fun7
+
+  test "fun8(null)" (-1) $ c_fun8 nullPtr
 
   testIO "fun8(\"hello\")" 5 $ do
     withCString "hello" $ \psrc ->

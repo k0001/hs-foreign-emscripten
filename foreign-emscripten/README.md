@@ -2,6 +2,8 @@
 
 Dispatch GHCJS FFI CCALLs to code compiled by Emscripten.
 
+__WARNING__ This probably doesn't cover all cases it should.
+
 __WARNING__ This is not optimized for performance yet.
 
 As described in the [GHCJS FFI documentation](https://github.com/ghcjs/ghcjs/blob/master/doc/foreign-function-interface.md),
